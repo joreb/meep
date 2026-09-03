@@ -24,3 +24,8 @@ try:
     from .wrapper import MeepJaxWrapper
 except ModuleNotFoundError as _:
     pass
+
+try:
+    from .torch_wrapper import MeepTorchWrapper
+except ModuleNotFoundError as _:
+    pass

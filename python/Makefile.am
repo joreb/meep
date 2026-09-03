@@ -34,7 +34,8 @@ ADJOINT_TESTS =                                \
     $(TEST_DIR)/test_adjoint_solver.py         \
     $(TEST_DIR)/test_adjoint_utils.py          \
     $(TEST_DIR)/test_adjoint_cyl.py            \
-    $(TEST_DIR)/test_adjoint_jax.py
+    $(TEST_DIR)/test_adjoint_jax.py            \
+    $(TEST_DIR)/test_adjoint_torch.py
 
 TESTS =                                        \
     $(TEST_DIR)/test_3rd_harm_1d.py            \
@@ -248,6 +249,8 @@ adjoint_PYTHON  = $(srcdir)/adjoint/__init__.py              \
                   $(srcdir)/adjoint/connectivity.py         \
                   $(srcdir)/adjoint/unfilter_design.py        \
                   $(srcdir)/adjoint/wrapper.py               \
+                  $(srcdir)/adjoint/wrapper_base.py          \
+                  $(srcdir)/adjoint/torch_wrapper.py         \
                   $(srcdir)/adjoint/utils.py
 
 PY_PKG_FILES = $(INIT_PY) $(HL_IFACE) .libs/_meep.so

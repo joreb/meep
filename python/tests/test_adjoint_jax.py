@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import meep.adjoint as mpa
 import numpy as onp
 import parameterized
-from utils import ApproxComparisonTestCase
+from utils import ApproxComparisonTestCase, build_straight_wg_simulation
 
 import meep as mp
 
@@ -26,129 +26,6 @@ _TOL = 0.1 if mp.is_single_precision() else 0.025
 _NUM_DES_REG_MON = 3
 
 mp.verbosity(0)
-
-
-def build_straight_wg_simulation(
-    wg_width=0.5,
-    wg_padding=1.0,
-    wg_length=1.0,
-    pml_width=1.0,
-    source_to_pml=0.5,
-    source_to_monitor=0.1,
-    frequencies=[1 / 1.55],
-    gaussian_rel_width=0.2,
-    sim_resolution=20,
-    design_region_resolution=20,
-):
-    """Builds a simulation of a straight waveguide with a design region segment."""
-    design_region_shape = (1.0, wg_width)
-
-    # Simulation domain size
-    sx = 2 * pml_width + 2 * wg_length + design_region_shape[0]
-    sy = (
-        2 * pml_width
-        + 2 * wg_padding
-        + max(
-            wg_width,
-            design_region_shape[1],
-        )
-    )
-
-    # Mean / center frequency
-    fmean = onp.mean(frequencies)
-
-    si = mp.Medium(index=3.4)
-    sio2 = mp.Medium(index=1.44)
-
-    sources = [
-        mp.EigenModeSource(
-            mp.GaussianSource(frequency=fmean, fwidth=fmean * gaussian_rel_width),
-            eig_band=1,
-            direction=mp.NO_DIRECTION,
-            eig_kpoint=mp.Vector3(1, 0, 0),
-            size=mp.Vector3(0, wg_width + 2 * wg_padding, 0),
-            center=[-sx / 2 + pml_width + source_to_pml, 0, 0],
-        ),
-        mp.EigenModeSource(
-            mp.GaussianSource(frequency=fmean, fwidth=fmean * gaussian_rel_width),
-            eig_band=1,
-            direction=mp.NO_DIRECTION,
-            eig_kpoint=mp.Vector3(-1, 0, 0),
-            size=mp.Vector3(0, wg_width + 2 * wg_padding, 0),
-            center=[sx / 2 - pml_width - source_to_pml, 0, 0],
-        ),
-    ]
-    nx, ny = int(design_region_shape[0] * design_region_resolution), int(
-        design_region_shape[1] * design_region_resolution
-    )
-    mat_grid = mp.MaterialGrid(
-        mp.Vector3(nx, ny),
-        sio2,
-        si,
-        grid_type="U_DEFAULT",
-    )
-
-    design_regions = [
-        mpa.DesignRegion(
-            mat_grid,
-            volume=mp.Volume(
-                center=mp.Vector3(),
-                size=mp.Vector3(
-                    design_region_shape[0],
-                    design_region_shape[1],
-                    0,
-                ),
-            ),
-        )
-    ]
-
-    geometry = [
-        mp.Block(
-            center=mp.Vector3(
-                x=-design_region_shape[0] / 2 - wg_length / 2 - pml_width / 2
-            ),
-            material=si,
-            size=mp.Vector3(wg_length + pml_width, wg_width, 0),
-        ),  # left wg
-        mp.Block(
-            center=mp.Vector3(
-                x=+design_region_shape[0] / 2 + wg_length / 2 + pml_width / 2
-            ),
-            material=si,
-            size=mp.Vector3(wg_length + pml_width, wg_width, 0),
-        ),  # right wg
-        mp.Block(
-            center=design_regions[0].center,
-            size=design_regions[0].size,
-            material=mat_grid,
-        ),  # design region
-    ]
-
-    simulation = mp.Simulation(
-        cell_size=mp.Vector3(sx, sy),
-        boundary_layers=[mp.PML(pml_width)],
-        geometry=geometry,
-        sources=sources,
-        resolution=sim_resolution,
-    )
-
-    monitor_centers = [
-        mp.Vector3(-sx / 2 + pml_width + source_to_pml + source_to_monitor),
-        mp.Vector3(sx / 2 - pml_width - source_to_pml - source_to_monitor),
-    ]
-    monitor_size = mp.Vector3(y=wg_width + 2 * wg_padding)
-
-    monitors = [
-        mpa.EigenmodeCoefficient(
-            simulation,
-            mp.Volume(center=center, size=monitor_size),
-            mode=1,
-            forward=forward,
-        )
-        for center in monitor_centers
-        for forward in [True, False]
-    ]
-    return simulation, sources, monitors, design_regions, frequencies
 
 
 class UtilsTest(unittest.TestCase):
